@@ -4,55 +4,18 @@ const { program } = require('commander')
 const chalk = require('chalk')
 const path = require('path')
 const figlet = require('figlet')
-const { exec } = require('child_process');
 const package = require('./package.json')
-const fs = require('fs')
-
-
+const { directoryExists, execShellCommand, processArgs } = require('./utils')
 console.log(
   chalk.yellow(figlet.textSync('Portal App', { horizontalLayout: 'full' }))
 )
-
-function directoryExists(filePath) {
-  return fs.existsSync(filePath);
-}
-
-/**
- * Executes a shell command and return it as a Promise.
- * @param cmd {string}
- * @return {Promise<string>}
- */
-function execShellCommand(cmd) {
-  return new Promise((resolve, reject) => {
-    exec(cmd, (error, stdout, stderr) => {
-      if (error) {
-        console.warn(error);
-        reject(error)
-      }
-      resolve(stdout ? stdout : stderr);
-    });
-  });
-}
-
-function processArgs(args) {
-  const userArgs = { npm: false, override: false, port: 3000, path: process.cwd() }
-  args.forEach((arg) => {
-    if (arg.includes("=")) {
-      let temp = arg.split("=")
-      userArgs[temp[0]] = temp[1]
-    }
-  })
-  return userArgs
-}
-// Output path to create new portal app
-
 
 // Commander parameters to specify CLI behavior
 program
   .version(package.version)
   .usage('show [ path=/some/path | npm=true | port=3000 ]')
-  .description('Creates a portal application from specified dataset',
-  )
+  .description('Creates a portal application from specified dataset')
+  .option('show', 'Displays the dataset in specified port')
   .option('npm', '[true || false] Install dependencies using npm instead yarn, defaults to false (yarn)')
   .option('port', 'Server port, defaults to 3000')
   .parse(process.argv,)
@@ -64,6 +27,13 @@ const userArgs = processArgs(program.args)
  * Main method to start CLI and validate inputs
  */
 async function run() {
+  if (!userArgs.show) {
+    console.log(
+      `${chalk.yellow(`Specify a command to run! Run ${chalk.cyan("portal -h")} for help`)}`
+    )
+    process.exit(1)
+  }
+
   const datasetPath = userArgs.path.trim()
 
   if (directoryExists(datasetPath)) {
@@ -77,18 +47,17 @@ async function run() {
     process.exit(1)
   }
 
+  console.log(datasetPath);
   const portalGithubRepo = "https://github.com/datopian/portal.js.git"
-  const portalLocalRepoDirectory = path.join(datasetPath, 'portal-experiment')
+  const portalLocalRepoDirectory = path.join(datasetPath, "portal.js")
 
-  const cloneRepoCmd = `cd ${datasetPath} && 
-                        export PORTAL_DATASET_PATH=${datasetPath} && 
-                        git clone ${portalGithubRepo}`
+  const cloneRepoCmd = `cd ${datasetPath} && git clone ${portalGithubRepo}`
 
-  const buildNextAppCmd = userArgs.npm ? `cd ${portalLocalRepoDirectory} && npm install && npm run build` :
-                                          `cd ${portalLocalRepoDirectory} && yarn && yarn build`
+  const buildNextAppCmd = userArgs.npm ? `cd ${portalLocalRepoDirectory} && export PORTAL_DATASET_PATH=${datasetPath} && npm install && npm run build` :
+    `cd ${portalLocalRepoDirectory} && export PORTAL_DATASET_PATH=${datasetPath} && yarn && yarn build`
 
   const startNextAppCmd = userArgs.npm ?
-    `cd ${portalLocalRepoDirectory} && npm run start -p ${userArgs.port}` :
+    ` cd ${portalLocalRepoDirectory} && npm run start -p ${userArgs.port}` :
     `cd ${portalLocalRepoDirectory} && yarn start -p ${userArgs.port}`
 
 

@@ -23,6 +23,6 @@
     "bin"
   ],
   "bin": {
-    "portal show": "index.js"
+    "portal": "index.js"
   }
 }
